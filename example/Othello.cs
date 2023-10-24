@@ -3,8 +3,8 @@ using System.Numerics;
 public struct Data
 {
     private const ulong u = 1;
-    public ulong White { get; } = (u << 27) + (u << 36);
-    public ulong Black { get; } = (u << 28) + (u << 35);
+    public ulong White { get; set; } = (u << 27) + (u << 36);
+    public ulong Black { get; set; } = (u << 28) + (u << 35);
 
     public Data(ulong white, ulong black)
     {
@@ -21,24 +21,46 @@ public class Othello
     int blackCount = 0;
     bool myTurn = true;
     bool white = false;
-    public Othello(Data data, int white, int black)
+    public Othello(Data data, int white, int black, bool isWhite)
     {
         this.data = data;
         whiteCount = white;
         blackCount = black;
+        this.white = isWhite;
     }
     public void Play(int position)
     {
-        // muda atual
-        foreach(var s in surrounding){
+        myTurn = !myTurn;
+
+        foreach (var s in surrounding)
+        {
             var moveChange = MoveAndChange(s, position, white);
 
-            data = new Data(moveChange.Item1, moveChange.Item2);
-            whiteCount = moveChange.Item3;
-            whiteCount = moveChange.Item4;
+            data = new Data(moveChange.Item1.White, moveChange.Item1.Black);
+
+            if (white)
+            {
+                whiteCount += moveChange.Item2;
+                blackCount -= moveChange.Item2;
+                continue;
+            }
+
+            whiteCount -= moveChange.Item2;
+            blackCount += moveChange.Item2;
         }
+
+        if (white)
+        {
+            data.White += u << position;
+            whiteCount++;
+            return;
+        }
+
+        data.Black += u << position;
+        blackCount++;
+        return;
     }
-    public (ulong, ulong, int, int) MoveAndChange(int direction, int currentPosition, bool white)
+    public (Data, int) MoveAndChange(int direction, int currentPosition, bool white)
     {
         var (enemy, friend) = (data.White >>> (63 - currentPosition) & 1) == 1 ? (data.Black, data.White) : (data.White, data.Black);
         var updatedPosition = currentPosition + direction;
@@ -46,40 +68,43 @@ public class Othello
         var positionIsFriend = (friend >>> (63 - updatedPosition) & 1) == 1;
         ulong newEnemy = 0;
         ulong newMe = 0;
-        int enemyCount = 0;
-        int myCount = 0;
 
         while (positionIsEnemy && IsInArea(direction, updatedPosition, currentPosition))
         {
-            newEnemy += u << updatedPosition;
-            newMe += u << updatedPosition;
-
-            if (!positionIsEnemy && positionIsFriend)
-                var newData = new Data(
-                    this.white ? data.White + newMe : data.White - newEnemy,
-                    this.white ? data.Black - newEnemy : data.Black - newMe
-                    )
-                // inimigo = data.black - newEnemy
-                // eu = data.white + newMe
-                return 
-
             updatedPosition += direction;
             positionIsEnemy = (enemy >>> (63 - updatedPosition) & 1) == 1;
             positionIsFriend = (friend >>> (63 - updatedPosition) & 1) == 1;
+
+            if (!positionIsEnemy && positionIsFriend)
+            {
+                var newDataWhite = this.white ? data.White + newMe : data.White - newEnemy;
+                var newDataBlack = this.white ? data.Black - newEnemy : data.Black + newMe;
+                var newData = new Data(newDataWhite, newDataBlack);
+
+                var distanceTraveled = Math.Abs(currentPosition - updatedPosition - direction);
+                var blocksTraveled = distanceTraveled / direction;
+
+                return (newData, blocksTraveled);
+            }
+
+            newEnemy += u << updatedPosition;
+            newMe += u << updatedPosition;
         }
 
-        return (data.White, data.Black, 0, 0);
+        return (data, 0);
     }
     public bool MoveTakesPiece(int currentPosition, int lineMovement)
     {
-        var enemy = (data.White >>> (63 - currentPosition) & 1) == 1 ? data.Black : data.White;
+        var (enemy, friend) = (data.White >>> (63 - currentPosition) & 1) == 1 ? (data.Black, data.White) : (data.White, data.Black);
         var updatedMovement = lineMovement + currentPosition;
         var positionIsEnemy = (enemy >>> (63 - updatedMovement) & 1) == 1;
+        var positionIsFriend = (friend >>> (63 - updatedMovement) & 1) == 1;
 
         while (positionIsEnemy && IsInArea(lineMovement, updatedMovement, currentPosition))
         {
             updatedMovement += lineMovement;
             positionIsEnemy = (enemy >>> (63 - updatedMovement) & 1) == 1;
+            positionIsFriend = (friend >>> (63 - updatedMovement) & 1) == 1;
 
             if (!positionIsEnemy && positionIsFriend)
                 return true;
@@ -100,7 +125,7 @@ public class Othello
         {
             case 1:
                 return currentPosition / 8 == line;
-                
+
             case 8:
                 return currentPosition % 8 == column;
 
@@ -128,7 +153,7 @@ public class Othello
         {
             var newPosition = position + surrounding[i];
 
-            if(newPosition < 0 && newPosition > 63)
+            if (newPosition < 0 && newPosition > 63)
                 continue;
 
             if (
@@ -137,12 +162,13 @@ public class Othello
             )
                 continue;
 
-            if (((pieces >>> newPosition) & 1) == 1){
+            if (((pieces >>> newPosition) & 1) == 1)
+            {
                 hasAdjacent = true;
             }
         }
 
-        if(!hasAdjacent) return false;
+        if (!hasAdjacent) return false;
 
         for (int i = 0; i < surrounding.Length; i++)
         {
@@ -157,7 +183,7 @@ public class Othello
     // }
     public Othello Clone()
     {
-        Othello copy = new Othello(data, whiteCount, blackCount);
+        Othello copy = new Othello(data, whiteCount, blackCount, white);
         return copy;
     }
     public IEnumerable<Othello> Next()
