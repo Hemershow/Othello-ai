@@ -1,5 +1,4 @@
 using System.Numerics;
-
 public struct Data
 {
     private const ulong u = 1;
@@ -16,10 +15,9 @@ public class Othello
 {
     private const ulong u = 1;
     protected readonly int[] surrounding = new int[8] { 1, -1, 8, -8, 9, -9, 7, -7 };
-    Data data = new Data();
-    int whiteCount = 0;
-    int blackCount = 0;
-    bool myTurn = true;
+    public Data data;
+    public int whiteCount { get; set; } = 0;
+    public int blackCount { get; set; } = 0;
     bool white = false;
     public Othello(Data data, int white, int black, bool isWhite)
     {
@@ -30,11 +28,9 @@ public class Othello
     }
     public void Play(int position)
     {
-        myTurn = !myTurn;
-
         foreach (var s in surrounding)
         {
-            var moveChange = MoveAndChange(s, position, white);
+            var moveChange = MoveAndChange(s, position);
 
             data = new Data(moveChange.Item1.White, moveChange.Item1.Black);
 
@@ -58,94 +54,115 @@ public class Othello
 
         data.Black += u << position;
         blackCount++;
-        return;
     }
-    public (Data, int) MoveAndChange(int direction, int currentPosition, bool white)
+    public bool GameEnded()
     {
-        var (enemy, friend) = (data.White >>> (63 - currentPosition) & 1) == 1 ? (data.Black, data.White) : (data.White, data.Black);
-        var updatedPosition = currentPosition + direction;
-        var positionIsEnemy = (enemy >>> (63 - updatedPosition) & 1) == 1;
-        var positionIsFriend = (friend >>> (63 - updatedPosition) & 1) == 1;
-        ulong newEnemy = 0;
-        ulong newMe = 0;
+        if (
+            (data.White | data.Black) == ulong.MaxValue ||
+            data.White == 0 ||
+            data.Black == 0
+        )
+            return true;
 
-        while (positionIsEnemy && IsInArea(direction, updatedPosition, currentPosition))
+        var ended = true;
+
+        for (int i = 63; i <= 0; i--)
         {
-            updatedPosition += direction;
-            positionIsEnemy = (enemy >>> (63 - updatedPosition) & 1) == 1;
-            positionIsFriend = (friend >>> (63 - updatedPosition) & 1) == 1;
-
-            if (!positionIsEnemy && positionIsFriend)
+            if (CanPlay(i))
             {
-                var newDataWhite = this.white ? data.White + newMe : data.White - newEnemy;
-                var newDataBlack = this.white ? data.Black - newEnemy : data.Black + newMe;
+                ended = false;
+                break;
+            }
+        }
+
+        return ended;
+    }
+    public (Data, int) MoveAndChange(int lineMovement, int currentPosition)
+    {
+        var (enemy, ally) = white ? (data.Black, data.White) : (data.White, data.Black);
+        var updatedPosition = currentPosition + lineMovement;
+        var positionIsEnemy = (enemy >>> (63 - updatedPosition) & 1) == 1;
+        var positionIsAlly = (ally >>> (63 - updatedPosition) & 1) == 1;
+        ulong mapChange = 0;
+
+        while ((positionIsEnemy || positionIsAlly) && IsInArea(lineMovement, updatedPosition, currentPosition))
+        {
+            if (!positionIsEnemy && positionIsAlly)
+            {
+                var newDataWhite = white ? data.White + mapChange : data.White - mapChange;
+                var newDataBlack = white ? data.Black - mapChange : data.Black + mapChange;
                 var newData = new Data(newDataWhite, newDataBlack);
 
-                var distanceTraveled = Math.Abs(currentPosition - updatedPosition - direction);
-                var blocksTraveled = distanceTraveled / direction;
+                var distanceTraveled = Math.Abs(currentPosition - updatedPosition - lineMovement);
+                var blocksTraveled = distanceTraveled / lineMovement;
 
                 return (newData, blocksTraveled);
             }
 
-            newEnemy += u << updatedPosition;
-            newMe += u << updatedPosition;
+            if (!positionIsAlly && !positionIsEnemy)    
+                return (data, 0);        
+
+            mapChange += u << updatedPosition;
+            updatedPosition += lineMovement;
+            positionIsEnemy = (enemy >>> (63 - updatedPosition) & 1) == 1;
+            positionIsAlly = (ally >>> (63 - updatedPosition) & 1) == 1;
         }
 
         return (data, 0);
     }
-    public bool MoveTakesPiece(int currentPosition, int lineMovement)
+    public bool MoveIsFlanking(int currentPosition, int lineMovement)
     {
-        var (enemy, friend) = (data.White >>> (63 - currentPosition) & 1) == 1 ? (data.Black, data.White) : (data.White, data.Black);
-        var updatedMovement = lineMovement + currentPosition;
-        var positionIsEnemy = (enemy >>> (63 - updatedMovement) & 1) == 1;
-        var positionIsFriend = (friend >>> (63 - updatedMovement) & 1) == 1;
+        var (enemy, ally) = white ? (data.Black, data.White) : (data.White, data.Black);
+        var updatedPosition = lineMovement + currentPosition;
+        var positionIsEnemy = ((enemy >>> updatedPosition) & 1) == 1;
+        bool positionIsAlly;
 
-        while (positionIsEnemy && IsInArea(lineMovement, updatedMovement, currentPosition))
+        while (positionIsEnemy && IsInArea(lineMovement, updatedPosition, currentPosition))
         {
-            updatedMovement += lineMovement;
-            positionIsEnemy = (enemy >>> (63 - updatedMovement) & 1) == 1;
-            positionIsFriend = (friend >>> (63 - updatedMovement) & 1) == 1;
+            updatedPosition += lineMovement;
+            positionIsEnemy = ((enemy >>> updatedPosition) & 1) == 1;
+            positionIsAlly = ((ally >>> updatedPosition) & 1) == 1;
 
-            if (!positionIsEnemy && positionIsFriend)
+            if (!positionIsEnemy && positionIsAlly)
                 return true;
+
+            if (!positionIsEnemy && !positionIsAlly)
+                return false;
         }
 
         return false;
     }
-    public bool IsInArea(int movement, int currentPosition, int originalPosition)
+    public bool IsInArea(int lineMovement, int currentPosition, int originalPosition)
     {
-        var line = originalPosition / 8;
-        var column = originalPosition % 8;
-        var right = movement == -7 || movement == 9;
+        var line = originalPosition % 8;
+        var column = originalPosition / 8;
+        var right = lineMovement == 7 || lineMovement == 9;
 
-        if (currentPosition > 63 || currentPosition < 0)
+        if (currentPosition < 0 || currentPosition > 63)
             return false;
 
-        switch (Math.Abs(movement))
+        switch (Math.Abs(lineMovement))
         {
             case 1:
-                return currentPosition / 8 == line;
-
-            case 8:
-                return currentPosition % 8 == column;
+                return currentPosition / 8 == column;
 
             case 9:
                 if (right)
-                    return currentPosition % 8 > column && currentPosition % 9 == originalPosition % 9;
-                return currentPosition % 8 < column && currentPosition % 9 == originalPosition % 9;
+                    return currentPosition % 8 > line && currentPosition % 9 == originalPosition % 9;
+                return currentPosition % 8 < line && currentPosition % 9 == originalPosition % 9;
 
             case 7:
                 if (right)
-                    return currentPosition % 8 > column && currentPosition % 7 == originalPosition % 7;
-                return currentPosition % 8 < column && currentPosition % 7 == originalPosition % 7;
+                    return currentPosition % 8 < line && currentPosition % 7 == originalPosition % 7;
+                return currentPosition % 8 > line && currentPosition % 7 == originalPosition % 7;
 
             default:
-                return false;
+                throw new Exception("Moio");
         }
     }
     public bool CanPlay(int position)
     {
-        var pieces = white ? data.White : data.Black;
+        var enemy = white ? data.Black : data.White;
 
         var hasAdjacent = false;
 
@@ -153,7 +170,7 @@ public class Othello
         {
             var newPosition = position + surrounding[i];
 
-            if (newPosition < 0 && newPosition > 63)
+            if (newPosition < 0 || newPosition > 63)
                 continue;
 
             if (
@@ -162,9 +179,10 @@ public class Othello
             )
                 continue;
 
-            if (((pieces >>> newPosition) & 1) == 1)
+            if (((enemy >>> newPosition) & 1) == 1)
             {
                 hasAdjacent = true;
+                break;
             }
         }
 
@@ -172,15 +190,12 @@ public class Othello
 
         for (int i = 0; i < surrounding.Length; i++)
         {
-            if (MoveTakesPiece(position, surrounding[i]))
+            if (MoveIsFlanking(position, surrounding[i]))
                 return true;
         }
 
         return false;
     }
-    // public bool GameEnded()
-    // {
-    // }
     public Othello Clone()
     {
         Othello copy = new Othello(data, whiteCount, blackCount, white);
@@ -190,11 +205,11 @@ public class Othello
     {
         var clone = Clone();
 
-        var state = data.White | data.Black;
+        var gameMap = data.White | data.Black;
 
         for (int i = 63; i >= 0; i--)
         {
-            var freePosition = ((state >>> i) & 1) != 1;
+            var freePosition = ((gameMap >>> i) & 1) != 1;
 
             if (!freePosition)
                 continue;

@@ -1,9 +1,11 @@
 ﻿string file = args.Length < 1 ? "m1" : args[0];
-int boards = args.Length < 2 ? 2 : int.Parse(args[1]);
 
-int deep = 6;
+int deep = 2;
+var datas = new Data();
+const ulong u = 1;
+System.Console.WriteLine((u << 27) + (u << 36));
 
-Notakto initial = new Notakto(boards);
+Othello initial = new Othello(datas, 2, 2, file != "m1");
 Node tree = new Node
 {
     State = initial,
@@ -11,15 +13,14 @@ Node tree = new Node
 };
 
 tree.Expand(deep);
-
 if (tree.YouPlays)
 {
-    tree.MiniMax();
+    tree.AlphaBeta(float.NegativeInfinity, float.PositiveInfinity);
     tree = tree.PlayBest();
     tree.Expand(deep);
-    var last = tree.State.GetLast();
     
-    File.WriteAllText($"{file}.txt", $"{last.board} {last.position}");
+    var turn = tree.YouPlays == true ? 1 : 0;
+    File.WriteAllText($"{file}.txt", $"{turn} {tree.State.data.White} {tree.State.data.Black} {tree.State.whiteCount} {tree.State.blackCount}");
 }
 
 while (true)
@@ -33,16 +34,17 @@ while (true)
     File.Delete($"{file} last.txt");
 
     var data = text.Split(" ");
-    var board = int.Parse(data[0]);
-    var position = int.Parse(data[1]);
+    var white = ulong.Parse(data[1]);
+    var black = ulong.Parse(data[2]);
 
-    tree = tree.Play(board, position);
+    tree = tree.Play(white, black);
     tree.Expand(deep);
 
-    tree.MiniMax();
+    tree.AlphaBeta(float.NegativeInfinity, float.PositiveInfinity);
     tree = tree.PlayBest();
     tree.Expand(deep);
+    
+    var turn = tree.YouPlays == true ? 1 : 0;
 
-    var last = tree.State.GetLast();
-    File.WriteAllText($"{file}.txt", $"{last.board} {last.position}");
+    File.WriteAllText($"{file}.txt", $"{turn} {tree.State.data.White} {tree.State.data.Black} {tree.State.whiteCount} {tree.State.blackCount}");
 }
