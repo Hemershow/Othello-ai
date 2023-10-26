@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Drawing;
 using System.Collections.Generic;
+using System.Threading;
 
 using Pamella;
 
@@ -87,14 +88,19 @@ public class OthelloView : View
         if (passCount > 1)
             return;
 
-        if (game.WhitePlays)
-            get(m1, m2);
-        else get(m2, m1);
+        try
+        {
+            if (game.WhitePlays)
+                get(m1, m2);
+            else get(m2, m1);
+        }
+        catch { }
         
         void get(string path, string other)
         {
             if (!File.Exists(path))
                 return;
+            Thread.Sleep(250);
             
             var text = File.ReadAllText(path);
             if (text != "pass")

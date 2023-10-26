@@ -1,4 +1,4 @@
-﻿string file = args.Length < 1 ? "m2" : args[0];
+﻿string file = args.Length < 1 ? "m1" : args[0];
 
 int deep = 2;
 var datas = new Data();
@@ -19,7 +19,7 @@ if (tree.YouPlays)
     tree.Expand(deep);
 
     var turn = tree.YouPlays == true ? 1 : 0;
-    File.WriteAllText($"../../../../front/{file}.txt", $"{turn} {tree.State.data.White} {tree.State.whiteCount} {tree.State.data.Black} {tree.State.blackCount}");
+    File.WriteAllText($"../front/{file}.txt", $"{turn} {tree.State.data.White} {tree.State.whiteCount} {tree.State.data.Black} {tree.State.blackCount}");
 }
 
 
@@ -27,12 +27,12 @@ while (true)
 {
     Thread.Sleep(1000);
 
-    if (!File.Exists($"../../../../front/[OUTPUT]{file}.txt"))
+    if (!File.Exists($"../front/[OUTPUT]{file}.txt"))
         continue;
     Thread.Sleep(250);
 
-    var text = File.ReadAllText($"../../../../front/[OUTPUT]{file}.txt");
-    File.Delete($"../../../../front/[OUTPUT]{file}.txt");
+    var text = File.ReadAllText($"../front/[OUTPUT]{file}.txt");
+    File.Delete($"../front/[OUTPUT]{file}.txt");
 
     var data = text.Split(" ");
     var white = ulong.Parse(data[1]);
@@ -47,5 +47,5 @@ while (true)
 
     var turn = tree.YouPlays == true ? 1 : 0;
 
-    File.WriteAllText($"../../../../front/{file}.txt", $"{turn} {tree.State.data.White} {tree.State.whiteCount} {tree.State.data.Black} {tree.State.blackCount}");
+    File.WriteAllText($"../front/{file}.txt", $"{turn} {tree.State.data.White} {tree.State.whiteCount} {tree.State.data.Black} {tree.State.blackCount}");
 }

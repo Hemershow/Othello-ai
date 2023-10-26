@@ -9,7 +9,6 @@ public class Node
     {
         foreach (var child in Children)
         {
-            // virar child 90 graus
             if (
                 child.State.data.White == white &&
                 child.State.data.Black == black
