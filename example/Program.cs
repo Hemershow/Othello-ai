@@ -3,7 +3,7 @@
 int deep = 2;
 var datas = new Data();
 
-Othello initial = new Othello(datas, 2, 2, file != "m1");
+Othello initial = new Othello(datas, 2, 2, true);
 Node tree = new Node
 {
     State = initial,

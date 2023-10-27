@@ -24,7 +24,7 @@ public class Othello
     public Data data;
     public int whiteCount { get; set; } = 2;
     public int blackCount { get; set; } = 2;
-    bool white = false;
+    public bool white { get; set; } = false;
     public Othello(Data data, int white, int black, bool isWhite)
     {
         this.data = data;
@@ -111,7 +111,9 @@ public class Othello
             mapChange += u << updatedPosition;
             updatedPosition += lineMovement;
             positionIsEnemy = (enemy >>> (63 - updatedPosition) & 1) == 1;
+            // positionIsEnemy = ((enemy >>> updatedPosition) & 1) == 1;
             positionIsAlly = (ally >>> (63 - updatedPosition) & 1) == 1;
+            // positionIsAlly = ((ally >>> updatedPosition) & 1) == 1;
         }
 
         return (data, 0);
@@ -227,6 +229,7 @@ public class Othello
                 continue;
 
             clone.Play(i);
+            clone.white = !white;
             yield return clone;
             clone = Clone();
         }

@@ -9,7 +9,6 @@ public class Node
     {
         foreach (var child in Children)
         {
-            // virar child 90 graus
             if (
                 child.State.data.White == white &&
                 child.State.data.Black == black
@@ -31,7 +30,7 @@ public class Node
                 this.Children.Add(new Node()
                 {
                     State = next,
-                    YouPlays = !YouPlays
+                    YouPlays = !YouPlays,
                 });
             this.Expanded = true;
         }
